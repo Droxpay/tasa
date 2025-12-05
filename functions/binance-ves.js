@@ -11,7 +11,7 @@ export async function handler(event, context) {
       tradeType: "BUY",
       page: 1,
       rows: 20,
-      payTypes: ["PagoMovil"]
+      
     };
 
     const resp = await fetch(
