@@ -52,7 +52,7 @@ export async function handler(event, context) {
         "Content-Type": "text/plain",
         "Access-Control-Allow-Origin": "*",
       },
-      body: precioFinal.toFixed(3)
+      body: precioFinal.toFixed(2)
     };
 
   } catch (err) {
