@@ -14,7 +14,7 @@ export async function handler(event, context) {
     // ==================================
 
     const MONTO_USDT = 10;
-    const MARGEN_BS = 2;
+    const MARGEN_BS = 0.5;
 
     const PAY_TYPES = [
       "BANK",
