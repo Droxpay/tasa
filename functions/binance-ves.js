@@ -193,16 +193,37 @@ export async function handler(event, context) {
     // ==================================
 
     const vendedorFinal =
-      ofertas[3] ??
-      ofertas[2] ??
-      ofertas[1] ??
-      ofertas[0];
+  ofertas[3] ??
+  ofertas[2] ??
+  ofertas[1] ??
+  ofertas[0];
 
-    if (!vendedorFinal) {
-      throw new Error(
-        "No se encontraron ofertas compatibles"
-      );
-    }
+console.log("=== REFERENCIA ===");
+console.log("Tercer vendedor:", tercerVendedor.price);
+console.log("Monto calculado para 10 USDT:", montoVES);
+
+console.log("=== OFERTAS ENCONTRADAS ===");
+
+ofertas.forEach((oferta, index) => {
+  console.log(
+    `${index + 1}. ${oferta.price}`
+  );
+});
+
+console.log("=== VENDEDOR SELECCIONADO ===");
+
+if (vendedorFinal) {
+  console.log(
+    "Cuarto vendedor:",
+    vendedorFinal.price
+  );
+}
+
+if (!vendedorFinal) {
+  throw new Error(
+    "No se encontraron ofertas compatibles"
+  );
+}
 
     // ==================================
     // PASO 5
