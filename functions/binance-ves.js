@@ -121,6 +121,14 @@ export async function handler(event, context) {
       );
     }
 
+    console.log("================================");
+    console.log("REFERENCIA DEL MERCADO");
+    console.log("================================");
+    console.log(
+      "Tercer vendedor:",
+      tercerVendedor.price
+    );
+
     // ==================================
     // PASO 2
     // CALCULAR MONTO EQUIVALENTE A 10 USDT
@@ -130,6 +138,11 @@ export async function handler(event, context) {
       Math.round(
         tercerVendedor.price * MONTO_USDT
       );
+
+    console.log(
+      "Monto equivalente para 10 USDT:",
+      montoVES
+    );
 
     // ==================================
     // PASO 3
@@ -187,43 +200,40 @@ export async function handler(event, context) {
         .filter(item => !isNaN(item.price))
         .sort((a, b) => a.price - b.price);
 
+    console.log("================================");
+    console.log("OFERTAS ENCONTRADAS");
+    console.log("================================");
+
+    ofertas.forEach((oferta, index) => {
+      console.log(
+        `${index + 1}. ${oferta.price}`
+      );
+    });
+
     // ==================================
     // PASO 4
     // CUARTO VENDEDOR
     // ==================================
 
     const vendedorFinal =
-  ofertas[3] ??
-  ofertas[2] ??
-  ofertas[1] ??
-  ofertas[0];
+      ofertas[3] ??
+      ofertas[2] ??
+      ofertas[1] ??
+      ofertas[0];
 
-console.log("=== REFERENCIA ===");
-console.log("Tercer vendedor:", tercerVendedor.price);
-console.log("Monto calculado para 10 USDT:", montoVES);
+    if (!vendedorFinal) {
+      throw new Error(
+        "No se encontraron ofertas compatibles"
+      );
+    }
 
-console.log("=== OFERTAS ENCONTRADAS ===");
-
-ofertas.forEach((oferta, index) => {
-  console.log(
-    `${index + 1}. ${oferta.price}`
-  );
-});
-
-console.log("=== VENDEDOR SELECCIONADO ===");
-
-if (vendedorFinal) {
-  console.log(
-    "Cuarto vendedor:",
-    vendedorFinal.price
-  );
-}
-
-if (!vendedorFinal) {
-  throw new Error(
-    "No se encontraron ofertas compatibles"
-  );
-}
+    console.log("================================");
+    console.log("VENDEDOR SELECCIONADO");
+    console.log("================================");
+    console.log(
+      "Cuarto vendedor:",
+      vendedorFinal.price
+    );
 
     // ==================================
     // PASO 5
@@ -232,6 +242,12 @@ if (!vendedorFinal) {
 
     const precioFinal =
       vendedorFinal.price + MARGEN_BS;
+
+    console.log("================================");
+    console.log("RESULTADO FINAL");
+    console.log("================================");
+    console.log("Margen aplicado:", MARGEN_BS);
+    console.log("Precio final:", precioFinal);
 
     // ==================================
     // RESPUESTA
@@ -248,7 +264,7 @@ if (!vendedorFinal) {
 
   } catch (error) {
 
-    console.error(error);
+    console.error("ERROR:", error);
 
     return {
       statusCode: 500,
