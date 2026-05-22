@@ -9,29 +9,30 @@ export async function handler(event, context) {
 
   try {
 
-    // ==========================
+    // ==================================
     // CONFIGURACIÓN
-    // ==========================
+    // ==================================
 
     const MONTO_USDT = 10;
     const MARGEN_BS = 2;
 
-    // IMPORTANTE:
-    // Verificar los códigos exactos en Binance.
     const PAY_TYPES = [
-      "BankTransfer",
-      "BancodeVenezuela"
+      "BANK",
+      "BancoDeVenezuela"
     ];
 
-    // ==========================
-    // TIMEOUT
-    // ==========================
+    const BINANCE_URL =
+      "https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search";
 
-    const fetchConTimeout = async (url, options = {}, timeout = 10000) => {
+    // ==================================
+    // FETCH CON TIMEOUT
+    // ==================================
+
+    async function fetchWithTimeout(url, options, timeout = 10000) {
 
       const controller = new AbortController();
 
-      const id = setTimeout(() => {
+      const timer = setTimeout(() => {
         controller.abort();
       }, timeout);
 
@@ -42,37 +43,54 @@ export async function handler(event, context) {
           signal: controller.signal
         });
 
-        clearTimeout(id);
+        clearTimeout(timer);
 
         return response;
 
-      } catch (err) {
+      } catch (error) {
 
-        clearTimeout(id);
+        clearTimeout(timer);
 
-        throw err;
+        throw error;
       }
+    }
+
+    // ==================================
+    // PASO 1
+    // OBTENER REFERENCIA DEL MERCADO
+    // ==================================
+
+    const referenciaBody = {
+      fiat: "VES",
+      page: 1,
+      rows: 10,
+      tradeType: "BUY",
+      asset: "USDT",
+      countries: [],
+      proMerchantAds: false,
+      publisherType: null,
+      payTypes: PAY_TYPES,
+      filterType: "all",
+      followed: false,
+      tradedWith: false,
+      shieldMerchantAds: false,
+      periods: [],
+      additionalKycVerifyFilter: 0,
+      classifies: [
+        "mass",
+        "profession",
+        "fiat_trade"
+      ]
     };
 
-    // ==========================
-    // PASO 1
-    // OBTENER REFERENCIA GENERAL
-    // ==========================
-
-    const referenciaResp = await fetchConTimeout(
-      "https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search",
+    const referenciaResp = await fetchWithTimeout(
+      BINANCE_URL,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-          asset: "USDT",
-          fiat: "VES",
-          tradeType: "BUY",
-          page: 1,
-          rows: 20
-        })
+        body: JSON.stringify(referenciaBody)
       }
     );
 
@@ -84,54 +102,72 @@ export async function handler(event, context) {
 
     const referenciaData = await referenciaResp.json();
 
-    const ofertasMercado = (referenciaData.data || [])
-      .map(item => ({
-        price: parseFloat(item.adv.price)
-      }))
-      .filter(item => !isNaN(item.price))
-      .sort((a, b) => a.price - b.price);
+    const ofertasReferencia =
+      (referenciaData.data || [])
+        .map(item => ({
+          price: parseFloat(item.adv.price)
+        }))
+        .filter(item => !isNaN(item.price))
+        .sort((a, b) => a.price - b.price);
 
-    const referencia =
-      ofertasMercado[2] ??
-      ofertasMercado[1] ??
-      ofertasMercado[0];
+    const tercerVendedor =
+      ofertasReferencia[2] ??
+      ofertasReferencia[1] ??
+      ofertasReferencia[0];
 
-    if (!referencia) {
+    if (!tercerVendedor) {
       throw new Error(
         "No se encontraron ofertas de referencia"
       );
     }
 
-    // ==========================
+    // ==================================
     // PASO 2
-    // CALCULAR 10 USDT EN Bs
-    // ==========================
+    // CALCULAR MONTO EQUIVALENTE A 10 USDT
+    // ==================================
 
-    const montoVES = Math.round(
-      referencia.price * MONTO_USDT
-    );
+    const montoVES =
+      Math.round(
+        tercerVendedor.price * MONTO_USDT
+      );
 
-    // ==========================
+    // ==================================
     // PASO 3
-    // BUSCAR OFERTAS REALES
-    // ==========================
+    // BUSCAR OFERTAS PARA ESE MONTO
+    // ==================================
 
-    const resp = await fetchConTimeout(
-      "https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search",
+    const busquedaBody = {
+      fiat: "VES",
+      page: 1,
+      rows: 10,
+      tradeType: "BUY",
+      asset: "USDT",
+      countries: [],
+      proMerchantAds: false,
+      publisherType: null,
+      payTypes: PAY_TYPES,
+      transAmount: montoVES,
+      filterType: "all",
+      followed: false,
+      tradedWith: false,
+      shieldMerchantAds: false,
+      periods: [],
+      additionalKycVerifyFilter: 0,
+      classifies: [
+        "mass",
+        "profession",
+        "fiat_trade"
+      ]
+    };
+
+    const resp = await fetchWithTimeout(
+      BINANCE_URL,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-          asset: "USDT",
-          fiat: "VES",
-          tradeType: "BUY",
-          page: 1,
-          rows: 50,
-          transAmount: String(montoVES),
-          payTypes: PAY_TYPES
-        })
+        body: JSON.stringify(busquedaBody)
       }
     );
 
@@ -143,72 +179,50 @@ export async function handler(event, context) {
 
     const data = await resp.json();
 
-    const ofertas = (data.data || [])
-      .map(item => {
+    const ofertas =
+      (data.data || [])
+        .map(item => ({
+          price: parseFloat(item.adv.price)
+        }))
+        .filter(item => !isNaN(item.price))
+        .sort((a, b) => a.price - b.price);
 
-        const adv = item.adv;
-
-        return {
-          price: parseFloat(adv.price),
-          minVES: parseFloat(
-            adv.minSingleTransAmount || 0
-          ),
-          maxVES: parseFloat(
-            adv.dynamicMaxSingleTransAmount ||
-            adv.maxSingleTransAmount ||
-            999999999
-          )
-        };
-
-      })
-      .filter(item => {
-
-        return (
-          !isNaN(item.price) &&
-          montoVES >= item.minVES &&
-          montoVES <= item.maxVES
-        );
-
-      })
-      .sort((a, b) => a.price - b.price);
-
-    // ==========================
+    // ==================================
     // PASO 4
     // CUARTO VENDEDOR
-    // ==========================
+    // ==================================
 
-    const vendedor =
+    const vendedorFinal =
       ofertas[3] ??
       ofertas[2] ??
       ofertas[1] ??
       ofertas[0];
 
-    if (!vendedor) {
-      return {
-        statusCode: 404,
-        body: "No se encontraron ofertas compatibles"
-      };
+    if (!vendedorFinal) {
+      throw new Error(
+        "No se encontraron ofertas compatibles"
+      );
     }
 
-    // ==========================
+    // ==================================
     // PASO 5
-    // SUMAR MARGEN
-    // ==========================
+    // APLICAR MARGEN
+    // ==================================
 
     const precioFinal =
-      vendedor.price + MARGEN_BS;
+      vendedorFinal.price + MARGEN_BS;
+
+    // ==================================
+    // RESPUESTA
+    // ==================================
 
     return {
-
       statusCode: 200,
-
       headers: {
         "Content-Type": "text/plain",
         "Access-Control-Allow-Origin": "*"
       },
-
       body: precioFinal.toFixed(2)
-
     };
 
   } catch (error) {
@@ -216,11 +230,8 @@ export async function handler(event, context) {
     console.error(error);
 
     return {
-
       statusCode: 500,
-
       body: `Error interno: ${error.message}`
-
     };
   }
 }
